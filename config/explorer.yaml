@@ -51,7 +51,7 @@ pvbsm_observed_root_penalty: 1.5
 pvbsm_degenerate_structure_bonus: 0.75
 
 # High-frequency rolling occupancy map used by frontier selection and later by
-# an EGO-Swarm adapter. It is intentionally independent of the SLAM map.
+# the EGO-Swarm planning bridge. It is intentionally independent of the SLAM map.
 planning_voxel_size_m: 0.5
 planning_sensor_range_m: 20.0
 planning_map_radius_m: 40.0
@@ -72,15 +72,33 @@ long_term_update_rate_hz: 1.0
 coverage_voxel_size_m: 2.0
 
 replan_interval_s: 1.0
-goal_min_hold_time_s: 3.0
-# Count accepted map updates (3 updates at 10 Hz is about 0.3 s).
-goal_blocked_confirm_updates: 3
+goal_min_hold_time_s: 5.0
+# Hold an accepted task goal until reached, persistently blocked or timed out.
+allow_periodic_goal_switch: false
+# Count accepted map updates (10 updates at 10 Hz is about 1.0 s).
+goal_blocked_confirm_updates: 10
 same_goal_tolerance_m: 0.5
-goal_timeout_s: 12.0
-goal_reached_distance_m: 1.0
+goal_timeout_s: 45.0
+goal_reached_distance_m: 0.5
 min_goal_distance_m: 2.0
 max_goal_distance_m: 15.0
 max_goal_vertical_distance_m: 3.0
+# Indoor UAV goals stay above the floor and below the usual room ceiling.
+min_goal_z_m: 0.75
+max_goal_z_m: 1.75
+# Optional hard map-frame boundary. Enable only after measuring the indoor3
+# bounds in camera_init; altitude limits above remain active independently.
+geofence_enabled: false
+geofence_min_x_m: -1000.0
+geofence_max_x_m: 1000.0
+geofence_min_y_m: -1000.0
+geofence_max_y_m: 1000.0
+geofence_min_z_m: -1000.0
+geofence_max_z_m: 1000.0
+# A task goal is accepted only when every sampled segment voxel is known free.
+min_known_free_path_ratio: 1.0
+# Stop inside known free space instead of commanding the frontier boundary.
+viewpoint_standoff_m: 1.0
 goal_switch_margin: 0.15
 
 # DAIB-MCSVF: first reduce raw frontier voxels into local clusters, then place

@@ -8,6 +8,11 @@
     <param name="input_timeout_s" value="0.5"/>
     <param name="min_goal_distance_m" value="1.0"/>
     <param name="max_goal_distance_m" value="10.0"/>
+    <!-- This contract fixture runs at z=0; flight-altitude policy is covered
+         separately by ExplorerCore.RestrictsGoalsToConfiguredFlightAltitude. -->
+    <param name="min_goal_z_m" value="-1.0"/>
+    <param name="max_goal_z_m" value="1.0"/>
+    <param name="min_known_free_path_ratio" value="0.0"/>
   </node>
 
   <test test-name="runtime_contract"

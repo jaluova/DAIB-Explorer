@@ -31,6 +31,91 @@ TEST(ExplorerCore, BuildsFrontiersAndSelectsGoal)
   EXPECT_EQ(decision.generation, 1U);
 }
 
+TEST(ExplorerCore, ClustersFrontiersIntoSafeViewpoints)
+{
+  ExplorerConfig config;
+  config.min_goal_distance_m = 1.0;
+  config.max_goal_distance_m = 10.0;
+  config.frontier_cluster_size_m = 1.5;
+  config.min_frontier_cluster_cells = 2;
+  config.viewpoint_standoff_m = 1.0;
+  config.min_wall_clearance_m = 0.5;
+  ExplorerCore explorer(config);
+
+  explorer.update({0.0, 0.0, 0.0}, {}, {{8.0, 0.0, 0.0}}, 1.0);
+
+  EXPECT_GT(explorer.stats().frontier_clusters, 0U);
+  EXPECT_LT(explorer.stats().frontier_clusters,
+            explorer.stats().frontier_cells);
+  EXPECT_GT(explorer.stats().safe_viewpoint_candidates, 0U);
+  GoalDecision decision;
+  ASSERT_TRUE(explorer.consumeDecision(decision));
+  EXPECT_TRUE(decision.valid);
+  EXPECT_TRUE(std::isfinite(decision.yaw));
+  EXPECT_LT(std::fabs(decision.yaw), 0.25);
+}
+
+TEST(ExplorerCore, RestrictsGoalsToConfiguredFlightAltitude)
+{
+  ExplorerConfig config;
+  config.min_goal_distance_m = 1.0;
+  config.max_goal_distance_m = 10.0;
+  config.min_goal_z_m = 0.75;
+  config.max_goal_z_m = 1.75;
+  ExplorerCore explorer(config);
+
+  explorer.update({0.0, 0.0, 0.0}, {}, {{8.0, 0.0, 0.0}}, 1.0);
+  GoalDecision rejected;
+  ASSERT_TRUE(explorer.consumeDecision(rejected));
+  EXPECT_FALSE(rejected.valid);
+  EXPECT_EQ(rejected.state, "WAIT_FOR_FRONTIER");
+
+  ExplorerCore airborne(config);
+  airborne.update({0.0, 0.0, 1.0}, {}, {{8.0, 0.0, 1.0}}, 1.0);
+  GoalDecision accepted;
+  ASSERT_TRUE(airborne.consumeDecision(accepted));
+  ASSERT_TRUE(accepted.valid);
+  EXPECT_GE(accepted.position.z, config.min_goal_z_m);
+  EXPECT_LE(accepted.position.z, config.max_goal_z_m);
+}
+
+TEST(ExplorerCore, RejectsViewpointsOutsideConfiguredGeofence)
+{
+  ExplorerConfig config;
+  config.min_goal_distance_m = 1.0;
+  config.max_goal_distance_m = 10.0;
+  config.geofence_enabled = true;
+  config.geofence_min_x_m = -0.5;
+  config.geofence_max_x_m = 0.5;
+  config.geofence_min_y_m = -1.0;
+  config.geofence_max_y_m = 1.0;
+  config.geofence_min_z_m = -1.0;
+  config.geofence_max_z_m = 1.0;
+  ExplorerCore explorer(config);
+
+  explorer.update({0.0, 0.0, 0.0}, {}, {{8.0, 0.0, 0.0}}, 1.0);
+  GoalDecision decision;
+  ASSERT_TRUE(explorer.consumeDecision(decision));
+  EXPECT_FALSE(decision.valid);
+  EXPECT_EQ(decision.reason, "no_safe_frontier");
+}
+
+TEST(ExplorerCore, RejectsViewpointsWithoutObstacleClearance)
+{
+  ExplorerConfig config;
+  config.min_goal_distance_m = 1.0;
+  config.max_goal_distance_m = 10.0;
+  config.min_wall_clearance_m = 20.0;
+  ExplorerCore explorer(config);
+
+  explorer.update({0.0, 0.0, 0.0}, {}, {{8.0, 0.0, 0.0}}, 1.0);
+  EXPECT_EQ(explorer.stats().safe_viewpoint_candidates, 0U);
+  GoalDecision decision;
+  ASSERT_TRUE(explorer.consumeDecision(decision));
+  EXPECT_FALSE(decision.valid);
+  EXPECT_EQ(decision.reason, "no_safe_frontier");
+}
+
 TEST(ExplorerCore, ScalesBudgetFromLioRuntime)
 {
   ExplorerConfig config;
@@ -102,6 +187,28 @@ TEST(ExplorerCore, HoldsGoalAndSuppressesSameTimedOutGoal)
   GoalDecision republished;
   EXPECT_FALSE(explorer.consumeDecision(republished));
   EXPECT_EQ(explorer.stats().suppressed_goal_republishes, 1U);
+}
+
+TEST(ExplorerCore, KeepsAcceptedGoalWhenPeriodicSwitchingIsDisabled)
+{
+  ExplorerConfig config;
+  config.min_goal_distance_m = 1.0;
+  config.max_goal_distance_m = 10.0;
+  config.goal_min_hold_time_s = 1.0;
+  config.goal_timeout_s = 20.0;
+  config.allow_periodic_goal_switch = false;
+  ExplorerCore explorer(config);
+
+  explorer.update({0.0, 0.0, 0.0}, {}, {{8.0, 0.0, 0.0}}, 1.0);
+  GoalDecision initial;
+  ASSERT_TRUE(explorer.consumeDecision(initial));
+  ASSERT_TRUE(initial.valid);
+
+  explorer.update(
+      {0.0, 0.0, 0.0}, {},
+      {{8.0, 0.0, 0.0}, {-8.0, 0.0, 0.0}}, 5.0);
+  GoalDecision replacement;
+  EXPECT_FALSE(explorer.consumeDecision(replacement));
 }
 
 TEST(ExplorerCore, RequiresConsecutiveObstacleConfirmation)

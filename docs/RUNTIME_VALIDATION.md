@@ -67,8 +67,12 @@ Acceptance criteria:
   and the same line reports `memory_source=pvbsm`;
 - the `cycles` log ratio approaches `10 map : 10 blocked-check : 2 frontier :
   1 goal : 1 memory` per second;
-- a valid goal has frame `camera_init` and lies near a frontier;
-- generation does not change during `goal_min_hold_time_s`;
+- the log reports fewer clusters than frontier voxels and at least one safe
+  viewpoint when a goal is available;
+- a valid goal has frame `camera_init`, lies inside the configured altitude and
+  geofence bounds, and stops short of its frontier cluster;
+- generation remains unchanged until the goal is reached, persistently
+  blocked or timed out when `allow_periodic_goal_switch=false`;
 - one transient occupied update does not switch the goal;
 - a continuously blocked goal switches after
   `goal_blocked_confirm_updates`;

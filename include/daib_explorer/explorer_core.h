@@ -71,6 +71,17 @@ struct ExplorerConfig
   double min_goal_distance_m = 2.0;
   double max_goal_distance_m = 15.0;
   double max_goal_vertical_distance_m = 3.0;
+  double min_goal_z_m = -1000.0;
+  double max_goal_z_m = 1000.0;
+  bool geofence_enabled = false;
+  double geofence_min_x_m = -1000.0;
+  double geofence_max_x_m = 1000.0;
+  double geofence_min_y_m = -1000.0;
+  double geofence_max_y_m = 1000.0;
+  double geofence_min_z_m = -1000.0;
+  double geofence_max_z_m = 1000.0;
+  double min_known_free_path_ratio = 0.0;
+  bool allow_periodic_goal_switch = true;
   double goal_switch_margin = 0.15;
 
   // DAIB-MCSVF: cluster raw frontier voxels, then place one safe viewpoint
@@ -248,6 +259,7 @@ private:
   void updateFrontiers();
   bool segmentBlocked(const Vec3 &start, const Vec3 &end,
                       double *known_free_ratio = nullptr) const;
+  bool withinGeofence(const Vec3 &point) const;
   bool pathReachable(const Vec3 &start, const Vec3 &end,
                      int max_expansions, bool *budget_exhausted = nullptr) const;
   bool hasWallClearance(const VoxelKey &voxel) const;

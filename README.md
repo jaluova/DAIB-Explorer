@@ -6,6 +6,13 @@ coarse trajectory-visit memory, PVBSM structural memory and single-UAV goal
 selection. FAST-LIVO2 remains responsible only for localization/mapping and
 publishes observations through standard ROS messages.
 
+Goal selection is cluster based: adjacent frontier voxels are grouped into
+bounded spatial clusters, each cluster produces at most one observation
+viewpoint, and the viewpoint is pulled back into known free space with a
+configurable obstacle clearance. An accepted goal is held until it is reached,
+persistently blocked or timed out. Optional map-frame geofence bounds provide
+a hard indoor operating envelope.
+
 ## Why it is a separate process
 
 - FAST-LIVO2 stays on its real-time LIO/VIO path even if frontier extraction is
@@ -56,7 +63,7 @@ Outputs:
 
 | Topic | Type | Consumer |
 |---|---|---|
-| `/daib_explorer/goal` | `geometry_msgs/PoseStamped` | EGO-Swarm adapter; timestamp and pose identify the goal |
+| `/daib_explorer/goal` | `geometry_msgs/PoseStamped` | EGO-Swarm bridge; timestamp and pose identify the goal |
 | `/daib_explorer/frontiers` | `sensor_msgs/PointCloud2` | RViz / validation |
 | `/daib_explorer/planning_cloud` | `sensor_msgs/PointCloud2` | Rolling occupied-voxel centers for local planning |
 | `/daib_explorer/ready` | `std_msgs/Bool` | Planner watchdog; latched state plus 1 Hz heartbeat |
@@ -93,9 +100,9 @@ publishes both in `camera_init`; a mismatch is rejected instead of silently
 planning in mixed coordinate frames.
 
 `/daib_explorer/generation` is the application-level goal generation used for
-monitoring and acknowledgement. ROS1 owns `PoseStamped.header.seq`, so planner
-adapters must not use that transport field as the DAIB generation. The EGO
-adapter identifies duplicate goals by timestamp and pose and consumes the
+monitoring and acknowledgement. ROS1 owns `PoseStamped.header.seq`, so the
+planning bridge must not use that transport field as the DAIB generation. The
+bridge identifies duplicate goals by timestamp and pose and consumes the
 separate generation topic for telemetry.
 
 ## Build and run
@@ -120,7 +127,7 @@ pre-EGO acceptance test.
 ## Safety boundary
 
 The published goal is a task-level destination, not a dynamically feasible
-trajectory. Do not connect it directly to PX4. Use the DAIB adapter and
+trajectory. Do not connect it directly to PX4. Use the DAIB bridge and
 resource-constrained launch in `ego-planner-swarmYYY` to validate the goal,
 consume the local occupied cloud and generate a collision-free B-spline.
 The resulting `PositionCommand` is still a controller-facing interface rather

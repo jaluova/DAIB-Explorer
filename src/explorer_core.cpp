@@ -89,6 +89,16 @@ void ExplorerCore::sanitizeConfig()
   config_.max_goal_vertical_distance_m =
       std::max(config_.planning_voxel_size_m,
                config_.max_goal_vertical_distance_m);
+  if (config_.min_goal_z_m > config_.max_goal_z_m)
+    std::swap(config_.min_goal_z_m, config_.max_goal_z_m);
+  if (config_.geofence_min_x_m > config_.geofence_max_x_m)
+    std::swap(config_.geofence_min_x_m, config_.geofence_max_x_m);
+  if (config_.geofence_min_y_m > config_.geofence_max_y_m)
+    std::swap(config_.geofence_min_y_m, config_.geofence_max_y_m);
+  if (config_.geofence_min_z_m > config_.geofence_max_z_m)
+    std::swap(config_.geofence_min_z_m, config_.geofence_max_z_m);
+  config_.min_known_free_path_ratio =
+      clamp(config_.min_known_free_path_ratio, 0.0, 1.0);
   config_.goal_switch_margin = clamp(config_.goal_switch_margin, 0.0, 1.0);
   if (config_.scene_mode != "indoor" && config_.scene_mode != "outdoor")
     config_.scene_mode = "indoor";
@@ -400,6 +410,17 @@ bool ExplorerCore::segmentBlocked(const Vec3 &start, const Vec3 &end,
   if (known_free_ratio)
     *known_free_ratio = static_cast<double>(known_free) / steps;
   return false;
+}
+
+bool ExplorerCore::withinGeofence(const Vec3 &point) const
+{
+  if (!config_.geofence_enabled) return true;
+  return point.x >= config_.geofence_min_x_m &&
+         point.x <= config_.geofence_max_x_m &&
+         point.y >= config_.geofence_min_y_m &&
+         point.y <= config_.geofence_max_y_m &&
+         point.z >= config_.geofence_min_z_m &&
+         point.z <= config_.geofence_max_z_m;
 }
 
 bool ExplorerCore::pathReachable(const Vec3 &start, const Vec3 &end,
@@ -718,6 +739,9 @@ void ExplorerCore::updateDecision(const Vec3 &position, double timestamp)
       had_goal && goal_set_time_ >= 0.0 &&
       timestamp - goal_set_time_ < config_.goal_min_hold_time_s;
   if (hold && !goal_reached_ && !goal_blocked_) return;
+  if (had_goal && !goal_reached_ && !goal_blocked_ && !goal_timeout_ &&
+      !config_.allow_periodic_goal_switch)
+    return;
   const bool periodic =
       last_plan_time_ < 0.0 ||
       timestamp - last_plan_time_ >= config_.replan_interval_s;
@@ -837,12 +861,17 @@ void ExplorerCore::updateDecision(const Vec3 &position, double timestamp)
         180.0 / 3.14159265358979323846;
     if (candidate_distance < config_.min_goal_distance_m ||
         candidate_distance > max_distance ||
+        candidate.z < config_.min_goal_z_m ||
+        candidate.z > config_.max_goal_z_m ||
+        !withinGeofence(candidate) ||
         std::fabs(candidate.z - position.z) > max_vertical ||
         climb_angle > max_climb_angle)
       continue;
     double known_free = 0.0;
     const bool direct_blocked =
         segmentBlocked(position, candidate, &known_free);
+    if (known_free + 1e-9 < config_.min_known_free_path_ratio)
+      continue;
     if (direct_blocked)
     {
       if (!config_.reachability_enabled ||

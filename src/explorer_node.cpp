@@ -288,6 +288,39 @@ private:
     private_nh_.param("max_goal_distance_m",
                       config.max_goal_distance_m,
                       config.max_goal_distance_m);
+    private_nh_.param("min_goal_z_m",
+                      config.min_goal_z_m,
+                      config.min_goal_z_m);
+    private_nh_.param("max_goal_z_m",
+                      config.max_goal_z_m,
+                      config.max_goal_z_m);
+    private_nh_.param("geofence_enabled",
+                      config.geofence_enabled,
+                      config.geofence_enabled);
+    private_nh_.param("geofence_min_x_m",
+                      config.geofence_min_x_m,
+                      config.geofence_min_x_m);
+    private_nh_.param("geofence_max_x_m",
+                      config.geofence_max_x_m,
+                      config.geofence_max_x_m);
+    private_nh_.param("geofence_min_y_m",
+                      config.geofence_min_y_m,
+                      config.geofence_min_y_m);
+    private_nh_.param("geofence_max_y_m",
+                      config.geofence_max_y_m,
+                      config.geofence_max_y_m);
+    private_nh_.param("geofence_min_z_m",
+                      config.geofence_min_z_m,
+                      config.geofence_min_z_m);
+    private_nh_.param("geofence_max_z_m",
+                      config.geofence_max_z_m,
+                      config.geofence_max_z_m);
+    private_nh_.param("min_known_free_path_ratio",
+                      config.min_known_free_path_ratio,
+                      config.min_known_free_path_ratio);
+    private_nh_.param("allow_periodic_goal_switch",
+                      config.allow_periodic_goal_switch,
+                      config.allow_periodic_goal_switch);
     private_nh_.param("max_goal_vertical_distance_m",
                       config.max_goal_vertical_distance_m,
                       config.max_goal_vertical_distance_m);
@@ -802,7 +835,9 @@ private:
     ROS_INFO_STREAM_THROTTLE(
         1.0, "[ DAIB Explorer ] map=" << stats.free_cells << " free/"
         << stats.occupied_cells << " occupied/" << stats.frontier_cells
-        << " frontier, visited=" << stats.visited_cells
+        << " frontier/" << stats.frontier_clusters << " clusters/"
+        << stats.safe_viewpoint_candidates << " viewpoints, visited="
+        << stats.visited_cells
         // Compatibility aliases: existing log parsers can keep consuming
         // observed/submaps, but both now come from the single PVBSM memory.
         << ", observed=" << pvbsm_root_count
