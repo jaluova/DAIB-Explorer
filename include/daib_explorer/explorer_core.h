@@ -71,6 +71,7 @@ struct ExplorerConfig
   double min_goal_distance_m = 2.0;
   double max_goal_distance_m = 15.0;
   double max_goal_vertical_distance_m = 3.0;
+  bool goal_z_relative_to_startup = false;
   double min_goal_z_m = -1000.0;
   double max_goal_z_m = 1000.0;
   bool geofence_enabled = false;
@@ -235,6 +236,8 @@ private:
   bool goal_reached_ = false;
   bool goal_blocked_ = false;
   bool goal_timeout_ = false;
+  bool have_startup_position_ = false;
+  Vec3 startup_position_;
   Quaternion current_orientation_;
   double last_goal_reachability_check_time_ = -1.0;
   bool cached_goal_reachable_ = true;

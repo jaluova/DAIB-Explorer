@@ -5,8 +5,9 @@
   <arg name="cloud_topic" default="/daib_slam/planning_cloud"/>
   <arg name="pvbsm_memory_enabled" default="true"/>
   <arg name="pvbsm_scoring_enabled" default="true"/>
-  <arg name="min_goal_z_m" default="0.75"/>
-  <arg name="max_goal_z_m" default="1.75"/>
+  <arg name="goal_z_relative_to_startup" default="true"/>
+  <arg name="min_goal_z_m" default="-1.5"/>
+  <arg name="max_goal_z_m" default="1.5"/>
   <arg name="min_known_free_path_ratio" default="1.0"/>
   <arg name="max_goal_distance_m" default="15.0"/>
   <arg name="viewpoint_standoff_m" default="1.0"/>
@@ -37,6 +38,8 @@
            value="$(arg pvbsm_memory_enabled)" type="bool"/>
     <param name="pvbsm_scoring_enabled"
            value="$(arg pvbsm_scoring_enabled)" type="bool"/>
+    <param name="goal_z_relative_to_startup"
+           value="$(arg goal_z_relative_to_startup)" type="bool"/>
     <param name="min_goal_z_m" value="$(arg min_goal_z_m)" type="double"/>
     <param name="max_goal_z_m" value="$(arg max_goal_z_m)" type="double"/>
     <param name="min_known_free_path_ratio"

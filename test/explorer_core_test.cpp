@@ -79,6 +79,24 @@ TEST(ExplorerCore, RestrictsGoalsToConfiguredFlightAltitude)
   EXPECT_LE(accepted.position.z, config.max_goal_z_m);
 }
 
+TEST(ExplorerCore, AppliesFlightAltitudeRelativeToStartupOdom)
+{
+  ExplorerConfig config;
+  config.min_goal_distance_m = 1.0;
+  config.max_goal_distance_m = 10.0;
+  config.goal_z_relative_to_startup = true;
+  config.min_goal_z_m = -0.5;
+  config.max_goal_z_m = 1.5;
+  ExplorerCore explorer(config);
+
+  explorer.update({10.0, -4.0, 23.0}, {}, {{18.0, -4.0, 23.0}}, 1.0);
+  GoalDecision decision;
+  ASSERT_TRUE(explorer.consumeDecision(decision));
+  ASSERT_TRUE(decision.valid);
+  EXPECT_GE(decision.position.z - 23.0, config.min_goal_z_m);
+  EXPECT_LE(decision.position.z - 23.0, config.max_goal_z_m);
+}
+
 TEST(ExplorerCore, RejectsViewpointsOutsideConfiguredGeofence)
 {
   ExplorerConfig config;

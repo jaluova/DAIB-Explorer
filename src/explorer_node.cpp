@@ -288,6 +288,9 @@ private:
     private_nh_.param("max_goal_distance_m",
                       config.max_goal_distance_m,
                       config.max_goal_distance_m);
+    private_nh_.param("goal_z_relative_to_startup",
+                      config.goal_z_relative_to_startup,
+                      config.goal_z_relative_to_startup);
     private_nh_.param("min_goal_z_m",
                       config.min_goal_z_m,
                       config.min_goal_z_m);

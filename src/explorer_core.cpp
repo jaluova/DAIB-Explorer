@@ -766,6 +766,10 @@ void ExplorerCore::updateDecision(const Vec3 &position, double timestamp)
       config_.scene_mode == "outdoor"
           ? config_.outdoor_max_climb_angle_deg
           : config_.indoor_max_climb_angle_deg;
+  const double goal_z_reference =
+      config_.goal_z_relative_to_startup && have_startup_position_
+          ? startup_position_.z
+          : 0.0;
   const bool detected_loop = loopDetected(position, timestamp);
   if (detected_loop && timestamp >= loop_escape_until_)
   {
@@ -859,10 +863,11 @@ void ExplorerCore::updateDecision(const Vec3 &position, double timestamp)
         std::fabs(candidate.z - position.z),
         std::max(config_.planning_voxel_size_m, horizontal_distance)) *
         180.0 / 3.14159265358979323846;
+    const double candidate_relative_z = candidate.z - goal_z_reference;
     if (candidate_distance < config_.min_goal_distance_m ||
         candidate_distance > max_distance ||
-        candidate.z < config_.min_goal_z_m ||
-        candidate.z > config_.max_goal_z_m ||
+        candidate_relative_z < config_.min_goal_z_m ||
+        candidate_relative_z > config_.max_goal_z_m ||
         !withinGeofence(candidate) ||
         std::fabs(candidate.z - position.z) > max_vertical ||
         climb_angle > max_climb_angle)
@@ -1147,6 +1152,11 @@ void ExplorerCore::update(const Vec3 &position,
                           const Quaternion &orientation,
                           const std::vector<Vec3> &points, double timestamp)
 {
+  if (!have_startup_position_)
+  {
+    startup_position_ = position;
+    have_startup_position_ = true;
+  }
   current_orientation_ = orientation;
   const auto start = std::chrono::steady_clock::now();
   ++update_id_;
