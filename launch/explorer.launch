@@ -1,8 +1,8 @@
 <launch>
   <arg name="config" default="$(find daib_explorer)/config/explorer.yaml"/>
   <arg name="use_sim_time" default="false"/>
-  <arg name="odom_topic" default="/daib_slam/odom"/>
-  <arg name="cloud_topic" default="/daib_slam/planning_cloud"/>
+  <arg name="odom_topic" default="/aft_mapped_to_init"/>
+  <arg name="cloud_topic" default="/cloud_registered"/>
   <arg name="pvbsm_memory_enabled" default="true"/>
   <arg name="pvbsm_scoring_enabled" default="true"/>
   <arg name="goal_z_relative_to_startup" default="true"/>

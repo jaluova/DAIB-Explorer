@@ -29,7 +29,7 @@ ego-planner-swarmYYY
   - dynamically feasible B-spline generation/replanning
         |
         v
-PX4
+Controller adapter (DJI or PX4, outside Explorer)
 ```
 
 Within DAIB-Explorer, only occupancy integration and current-goal blockage

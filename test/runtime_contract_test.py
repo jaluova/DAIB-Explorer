@@ -21,10 +21,10 @@ class RuntimeContractTest(unittest.TestCase):
         self._generation = None
         self._frontier = None
         self._odom_pub = rospy.Publisher(
-            "/daib_slam/odom", Odometry, queue_size=1
+            "/aft_mapped_to_init", Odometry, queue_size=1
         )
         self._cloud_pub = rospy.Publisher(
-            "/daib_slam/planning_cloud", PointCloud2, queue_size=1
+            "/cloud_registered", PointCloud2, queue_size=1
         )
         self._degenerate_pub = rospy.Publisher(
             "/daib_slam/degenerate", Bool, queue_size=1

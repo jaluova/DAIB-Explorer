@@ -8,10 +8,10 @@ connecting a trajectory planner or flight controller.
 Start FAST-LIVO2 and DAIB-Explorer, then verify:
 
 ```bash
-rostopic hz /daib_slam/odom
-rostopic hz /daib_slam/planning_cloud
-rostopic echo -n 1 /daib_slam/odom/header
-rostopic echo -n 1 /daib_slam/planning_cloud/header
+rostopic hz /aft_mapped_to_init
+rostopic hz /cloud_registered
+rostopic echo -n 1 /aft_mapped_to_init/header
+rostopic echo -n 1 /cloud_registered/header
 rostopic echo /daib_explorer/ready
 rostopic hz /daib_slam/pvbsm_delta
 rostopic echo /daib_slam/pvbsm_stats

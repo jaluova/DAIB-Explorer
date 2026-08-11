@@ -137,8 +137,8 @@ private:
   double degeneracy_score_ = 0.0;
   double lio_runtime_ms_ = -1.0;
 
-  std::string odom_topic_ = "/daib_slam/odom";
-  std::string cloud_topic_ = "/daib_slam/planning_cloud";
+  std::string odom_topic_ = "/aft_mapped_to_init";
+  std::string cloud_topic_ = "/cloud_registered";
   std::string degenerate_topic_ = "/daib_slam/degenerate";
   std::string score_topic_ = "/daib_slam/degeneracy_score";
   std::string runtime_topic_ = "/daib_slam/lio_runtime_ms";

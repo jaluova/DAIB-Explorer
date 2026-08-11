@@ -52,8 +52,8 @@ Inputs:
 
 | Topic | Type | Meaning |
 |---|---|---|
-| `/daib_slam/odom` | `nav_msgs/Odometry` | LIO pose with sensor timestamp |
-| `/daib_slam/planning_cloud` | `sensor_msgs/PointCloud2` | Bounded world-frame LIO cloud with the same timestamp |
+| `/aft_mapped_to_init` | `nav_msgs/Odometry` | LIO pose with sensor timestamp |
+| `/cloud_registered` | `sensor_msgs/PointCloud2` | Registered world-frame cloud with the same timestamp |
 | `/daib_slam/degenerate` | `std_msgs/Bool` | Lidar geometric degeneracy |
 | `/daib_slam/degeneracy_score` | `std_msgs/Float64` | Normalized minimum eigenvalue |
 | `/daib_slam/lio_runtime_ms` | `std_msgs/Float64` | Current LIO latency |
@@ -127,8 +127,8 @@ pre-EGO acceptance test.
 ## Safety boundary
 
 The published goal is a task-level destination, not a dynamically feasible
-trajectory. Do not connect it directly to PX4. Use the DAIB bridge and
-resource-constrained launch in `ego-planner-swarmYYY` to validate the goal,
-consume the local occupied cloud and generate a collision-free B-spline.
-The resulting `PositionCommand` is still a controller-facing interface rather
-than a direct PX4 setpoint connection.
+trajectory. Route it through the DAIB bridge and resource-constrained Planner
+launch to validate the goal, consume the local occupied cloud and generate a
+collision-free B-spline. The resulting `PositionCommand` is the boundary for
+a dedicated DJI or PX4 controller adapter; Explorer never publishes flight
+controller setpoints.
