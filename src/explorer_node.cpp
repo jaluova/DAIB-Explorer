@@ -5,12 +5,14 @@
 #include <cmath>
 #include <cstdint>
 #include <memory>
+#include <limits>
 #include <mutex>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
 #include <geometry_msgs/PoseStamped.h>
+#include <daib_decision_msgs/DaibExplorerStatus.h>
 #include <nav_msgs/Odometry.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -93,6 +95,8 @@ public:
     state_pub_ = nh_.advertise<std_msgs::String>(state_topic_, 1, true);
     generation_pub_ =
         nh_.advertise<std_msgs::UInt64>(generation_topic_, 1, true);
+    decision_status_pub_ = nh_.advertise<daib_decision_msgs::DaibExplorerStatus>(
+        decision_status_topic_, 2);
     if (pvbsm_memory_)
       pvbsm_stats_pub_ = nh_.advertise<std_msgs::UInt64MultiArray>(
           pvbsm_stats_topic_, 1, true);
@@ -126,6 +130,7 @@ private:
   ros::Publisher ready_pub_;
   ros::Publisher state_pub_;
   ros::Publisher generation_pub_;
+  ros::Publisher decision_status_pub_;
   ros::Publisher pvbsm_stats_pub_;
   ros::Timer map_timer_;
   std::unique_ptr<ExplorerCore> core_;
@@ -161,6 +166,7 @@ private:
   std::string ready_topic_ = "/daib_explorer/ready";
   std::string state_topic_ = "/daib_explorer/state";
   std::string generation_topic_ = "/daib_explorer/generation";
+  std::string decision_status_topic_ = "/daib_decision/status/explorer";
   std::string pvbsm_stats_topic_ = "/daib_explorer/pvbsm_memory_stats";
   double map_update_rate_hz_ = 10.0;
   double input_timeout_s_ = 1.0;
@@ -177,6 +183,13 @@ private:
   uint8_t pvbsm_expected_submap_edge_roots_ = 8;
   bool ready_ = false;
   bool ready_initialized_ = false;
+  uint64_t decision_status_session_id_ = 0;
+  uint64_t decision_status_sequence_ = 0;
+  double decision_status_ttl_s_ = 1.5;
+  uint64_t last_goal_generation_ = 0;
+  bool last_goal_valid_ = false;
+  std::string last_local_state_ = "WAIT_FOR_FRONTIER";
+  std::string last_local_reason_ = "STARTING";
 
   void readParameters(ExplorerConfig &config)
   {
@@ -201,6 +214,12 @@ private:
     private_nh_.param("topics/state", state_topic_, state_topic_);
     private_nh_.param(
         "topics/generation", generation_topic_, generation_topic_);
+    private_nh_.param("topics/decision_status", decision_status_topic_,
+                      decision_status_topic_);
+    private_nh_.param("decision_status/ttl_s", decision_status_ttl_s_, 1.5);
+    decision_status_ttl_s_ = std::max(0.1, decision_status_ttl_s_);
+    decision_status_session_id_ =
+        static_cast<uint64_t>(ros::WallTime::now().toNSec());
     private_nh_.param(
         "topics/pvbsm_memory_stats",
         pvbsm_stats_topic_,
@@ -646,6 +665,73 @@ private:
     ready_pub_.publish(message);
   }
 
+  void publishDecisionStatus(const ros::Time &stamp)
+  {
+    const ExplorerStats &stats = core_->stats();
+    daib_decision_msgs::DaibExplorerStatus status;
+    status.common.header.stamp = stamp.isZero() ? ros::Time::now() : stamp;
+    status.common.header.frame_id = "camera_init";
+    status.common.source = daib_decision_msgs::DaibModuleStatus::SOURCE_EXPLORER;
+    status.common.session_id = decision_status_session_id_;
+    status.common.sequence = ++decision_status_sequence_;
+    status.common.ttl_s = static_cast<float>(decision_status_ttl_s_);
+    status.common.reason_code = last_local_reason_;
+    status.common.reference_frame = status.common.header.frame_id;
+    status.ready = ready_;
+    status.goal_valid = last_goal_valid_;
+    status.goal_generation = last_goal_generation_;
+    status.frontier_count = static_cast<uint32_t>(std::min<std::size_t>(
+        stats.frontier_cells, std::numeric_limits<uint32_t>::max()));
+    status.candidate_count = static_cast<uint32_t>(std::min<std::size_t>(
+        stats.safe_viewpoint_candidates, std::numeric_limits<uint32_t>::max()));
+    status.local_state = last_local_state_;
+    status.local_reason = last_local_reason_;
+    if (!ready_)
+    {
+      status.state = daib_decision_msgs::DaibExplorerStatus::STATE_WAIT_INPUT;
+      status.common.state = daib_decision_msgs::DaibModuleStatus::STATE_STALE;
+      status.common.health = daib_decision_msgs::DaibModuleStatus::HEALTH_DEGRADED;
+      status.common.fault_mask = daib_decision_msgs::DaibModuleStatus::FAULT_INPUT_MISSING;
+    }
+    else if (last_local_state_.find("BLOCKED") != std::string::npos)
+    {
+      status.state = daib_decision_msgs::DaibExplorerStatus::STATE_GOAL_BLOCKED;
+      status.common.state = daib_decision_msgs::DaibModuleStatus::STATE_DEGRADED;
+      status.common.health = daib_decision_msgs::DaibModuleStatus::HEALTH_DEGRADED;
+      status.common.fault_mask = daib_decision_msgs::DaibModuleStatus::FAULT_DEGRADED;
+    }
+    else if (last_local_state_.find("STALLED") != std::string::npos)
+    {
+      status.state = daib_decision_msgs::DaibExplorerStatus::STATE_GOAL_STALLED;
+      status.common.state = daib_decision_msgs::DaibModuleStatus::STATE_DEGRADED;
+      status.common.health = daib_decision_msgs::DaibModuleStatus::HEALTH_DEGRADED;
+      status.common.fault_mask = daib_decision_msgs::DaibModuleStatus::FAULT_DEGRADED;
+    }
+    else if (last_local_state_.find("NO_FRONTIER") != std::string::npos ||
+             last_local_state_.find("WAIT_FOR_FRONTIER") != std::string::npos)
+    {
+      status.state = daib_decision_msgs::DaibExplorerStatus::STATE_NO_FRONTIER;
+      status.common.state = daib_decision_msgs::DaibModuleStatus::STATE_READY;
+      status.common.health = daib_decision_msgs::DaibModuleStatus::HEALTH_OK;
+      status.common.fault_mask = daib_decision_msgs::DaibModuleStatus::FAULT_NONE;
+    }
+    else if (last_goal_valid_)
+    {
+      status.state = daib_decision_msgs::DaibExplorerStatus::STATE_GOAL_ACTIVE;
+      status.common.state = daib_decision_msgs::DaibModuleStatus::STATE_READY;
+      status.common.health = daib_decision_msgs::DaibModuleStatus::HEALTH_OK;
+      status.common.fault_mask = daib_decision_msgs::DaibModuleStatus::FAULT_NONE;
+    }
+    else
+    {
+      status.state = daib_decision_msgs::DaibExplorerStatus::STATE_MAPPING;
+      status.common.state = daib_decision_msgs::DaibModuleStatus::STATE_READY;
+      status.common.health = daib_decision_msgs::DaibModuleStatus::HEALTH_OK;
+      status.common.fault_mask = daib_decision_msgs::DaibModuleStatus::FAULT_NONE;
+    }
+    decision_status_pub_.publish(status);
+  }
+
   std::vector<Vec3> convertCloud(const sensor_msgs::PointCloud2 &cloud) const
   {
     std::vector<Vec3> points;
@@ -809,6 +895,10 @@ private:
     GoalDecision decision;
     if (core_->consumeDecision(decision))
     {
+      last_local_state_ = decision.state;
+      last_local_reason_ = decision.reason;
+      last_goal_valid_ = decision.valid;
+      last_goal_generation_ = decision.generation;
       std_msgs::String state_message;
       state_message.data = decision.state + ":" + decision.reason;
       state_pub_.publish(state_message);
@@ -857,6 +947,7 @@ private:
     }
 
     const ExplorerStats &stats = core_->stats();
+    publishDecisionStatus(cloud->header.stamp);
     std::size_t pvbsm_root_count = 0;
     std::size_t pvbsm_submap_count = 0;
     if (pvbsm_memory_)
