@@ -818,6 +818,10 @@ private:
         (now - cloud_receive).toSec() > input_timeout_s_)
     {
       publishReady(false);
+      last_local_state_ = "WAIT_INPUT";
+      last_local_reason_ = "INPUT_STALE";
+      last_goal_valid_ = false;
+      publishDecisionStatus(ros::Time::now());
       ROS_WARN_THROTTLE(2.0, "[ DAIB Explorer ] waiting for fresh odometry and cloud");
       return;
     }
@@ -826,6 +830,10 @@ private:
         odom->header.frame_id != cloud->header.frame_id)
     {
       publishReady(false);
+      last_local_state_ = "WAIT_INPUT";
+      last_local_reason_ = "FRAME_MISMATCH";
+      last_goal_valid_ = false;
+      publishDecisionStatus(cloud->header.stamp);
       ROS_ERROR_THROTTLE(
           2.0, "[ DAIB Explorer ] frame mismatch: odom='%s', cloud='%s'",
           odom->header.frame_id.c_str(), cloud->header.frame_id.c_str());
@@ -836,6 +844,10 @@ private:
             max_input_stamp_skew_s_)
     {
       publishReady(false);
+      last_local_state_ = "WAIT_INPUT";
+      last_local_reason_ = "STAMP_SKEW";
+      last_goal_valid_ = false;
+      publishDecisionStatus(cloud->header.stamp);
       ROS_WARN_THROTTLE(
           2.0, "[ DAIB Explorer ] odometry/cloud timestamp skew is too large");
       return;
